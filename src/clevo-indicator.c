@@ -73,6 +73,17 @@
 
 #define MAX_FAN_RPM 4400.0
 
+#define MIN_DUTY 25
+#define MAX_DUTY 100
+
+#define DUTY_STEP 5
+#define TEMP_STEP 5
+
+#define TEMP_LOW  45
+#define TEMP_MID  55
+#define TEMP_HIGH 65
+#define TEMP_CRIT 75
+
 typedef enum {
     NA = 0, AUTO = 1, MANUAL = 2
 } MenuItemType;
@@ -444,35 +455,28 @@ static void ec_on_sigterm(int signum) {
 static int ec_auto_duty_adjust(void) {
     int temp = MAX(share_info->cpu_temp, share_info->gpu_temp);
     int duty = share_info->fan_duty;
-    //thresholds
-    int low = 45, mid = 55, high = 65, critical = 75;
-    int step = 5;
-    // min acceptable fan speed
-    int minfan = 25;
     int speed;
 
-    // Round temperature to 5%, if CPU is hot round it up
-    temp -= temp %5;
-    if(temp >= high)
-        temp = +5;
-
-    if( temp <= low){
-        // Confort zone, try to be silent
-        speed = temp - 2*step;
-        speed = speed < minfan ? minfan : speed;
-    }else if (temp <= mid){
-        // Regular zone a bit less quiet
-        speed = temp - step;
-    } else if( temp <= high){
-        // Even faster
+    // Round temperature to TEMP_STEP
+    temp = temp - temp % TEMP_STEP;
+    if(temp > TEMP_HIGH){
+        // Performance mode, round speed to TEMP_STEP up
+        temp += TEMP_STEP;
+        speed = temp + DUTY_STEP;
+        if(temp > TEMP_CRIT){
+            speed += DUTY_STEP;
+            speed = speed > MAX_DUTY ? MAX_DUTY : speed;
+        }
+    }else{
+        // Quiet mode
         speed = temp;
-    } else if( temp <= critical) {
-        // High zone, try to cool things done
-        speed = temp + step;
-    } else{
-        // Critical zone, let speed the fan up
-        speed = temp + 2*step;
-        speed = speed > 100 ? 100 : speed;
+        if(temp <= TEMP_MID){
+            speed -= DUTY_STEP;
+            if(temp <= TEMP_LOW){
+                speed -= DUTY_STEP;
+                speed = speed < MIN_DUTY ? MIN_DUTY : speed;
+            }
+        }
     }
 
     return speed;
