@@ -73,6 +73,23 @@
 
 #define MAX_FAN_RPM 4400.0
 
+/* Fine tunning for auto adjust
+ *
+ * Speed values are always between MIN_DUTY and MAX_DUTY
+ *
+ * Depending on the CPU temperature we use one of the following modes
+ *
+ * On quiet mode CPU TEMP < TEMP_HIGH
+ *  temp is rounded to TEMP_STEP down
+ *  speed = temp - DUTY_STEP * n
+ *      where n is the number of thresshold underpassed temp  (between 1 and 3)
+ *
+ * On performance mode
+ *  temp is rounded to TEMP_STEP up
+ *  speed = temp + DUTY_STEP * n
+ *      where n is the number of threshold overpassed by temp (between 1 and 2)
+ */
+
 #define MIN_DUTY 25
 #define MAX_DUTY 100
 
@@ -454,12 +471,11 @@ static void ec_on_sigterm(int signum) {
 
 static int ec_auto_duty_adjust(void) {
     int temp = MAX(share_info->cpu_temp, share_info->gpu_temp);
-    int duty = share_info->fan_duty;
     int speed;
 
     // Round temperature to TEMP_STEP
     temp = temp - temp % TEMP_STEP;
-    if(temp > TEMP_HIGH){
+    if(temp >= TEMP_HIGH){
         // Performance mode, round speed to TEMP_STEP up
         temp += TEMP_STEP;
         speed = temp + DUTY_STEP;
@@ -468,8 +484,8 @@ static int ec_auto_duty_adjust(void) {
             speed = speed > MAX_DUTY ? MAX_DUTY : speed;
         }
     }else{
-        // Quiet mode
-        speed = temp;
+        // Quiet mode temp
+        speed = temp - DUTY_STEP;
         if(temp <= TEMP_MID){
             speed -= DUTY_STEP;
             if(temp <= TEMP_LOW){
