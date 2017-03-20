@@ -147,6 +147,9 @@ struct {
 }static menuitems[] = {
         { "Set FAN to AUTO", G_CALLBACK(ui_command_set_fan), 0, AUTO, NULL },
         { "", NULL, 0L, NA, NULL },
+        { "Set FAN to  30%", G_CALLBACK(ui_command_set_fan), 30, MANUAL, NULL },
+        { "Set FAN to  40%", G_CALLBACK(ui_command_set_fan), 40, MANUAL, NULL },
+        { "Set FAN to  50%", G_CALLBACK(ui_command_set_fan), 50, MANUAL, NULL },
         { "Set FAN to  60%", G_CALLBACK(ui_command_set_fan), 60, MANUAL, NULL },
         { "Set FAN to  70%", G_CALLBACK(ui_command_set_fan), 70, MANUAL, NULL },
         { "Set FAN to  80%", G_CALLBACK(ui_command_set_fan), 80, MANUAL, NULL },
@@ -416,7 +419,7 @@ static gboolean ui_update(gpointer user_data) {
     double load = ((double) share_info->fan_rpms) / MAX_FAN_RPM * 100.0;
     double load_r = round(load / 5.0) * 5.0;
     sprintf(icon_name, "brasero-disc-%02d", (int) load_r);
-    app_indicator_set_icon(indicator, icon_name);
+    //app_indicator_set_icon(indicator, icon_name);
     return G_SOURCE_CONTINUE;
 }
 
