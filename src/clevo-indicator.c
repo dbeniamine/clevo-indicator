@@ -341,7 +341,7 @@ static void main_ui_worker(int argc, char** argv) {
             APP_INDICATOR_CATEGORY_HARDWARE);
     g_assert(IS_APP_INDICATOR(indicator));
     app_indicator_set_label(indicator, "Init..", "XX");
-    app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ATTENTION);
+    app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ACTIVE);
     app_indicator_set_ordering_index(indicator, -2);
     app_indicator_set_title(indicator, "Clevo");
     app_indicator_set_menu(indicator, GTK_MENU(indicator_menu));
