@@ -444,41 +444,39 @@ static void ec_on_sigterm(int signum) {
 static int ec_auto_duty_adjust(void) {
     int temp = MAX(share_info->cpu_temp, share_info->gpu_temp);
     int duty = share_info->fan_duty;
-    //
-    if (temp >= 80 && duty < 100)
-        return 100;
-    if (temp >= 70 && duty < 90)
-        return 90;
-    if (temp >= 60 && duty < 80)
-        return 80;
-    if (temp >= 50 && duty < 70)
-        return 70;
-    if (temp >= 40 && duty < 60)
-        return 60;
-    if (temp >= 30 && duty < 50)
-        return 50;
-    if (temp >= 20 && duty < 40)
-        return 40;
-    if (temp >= 10 && duty < 30)
-        return 30;
-    //
-    if (temp <= 15 && duty > 30)
-        return 30;
-    if (temp <= 25 && duty > 40)
-        return 40;
-    if (temp <= 35 && duty > 50)
-        return 50;
-    if (temp <= 45 && duty > 60)
-        return 60;
-    if (temp <= 55 && duty > 70)
-        return 70;
-    if (temp <= 65 && duty > 80)
-        return 80;
-    if (temp <= 75 && duty > 90)
-        return 90;
-    //
-    return 0;
-}
+    //thresholds
+    int low = 45, mid = 55, high = 65, critical = 75;
+    int step = 5;
+    // min acceptable fan speed
+    int minfan = 25;
+    int speed;
+
+    // Round temperature to 5%, if CPU is hot round it up
+    temp -= temp %5;
+    if(temp >= high)
+        temp = +5;
+
+    if( temp <= low){
+        // Confort zone, try to be silent
+        speed = temp - 2*step;
+        speed = speed < minfan ? minfan : speed;
+    }else if (temp <= mid){
+        // Regular zone a bit less quiet
+        speed = temp - step;
+    } else if( temp <= high){
+        // Even faster
+        speed = temp;
+    } else if( temp <= critical) {
+        // High zone, try to cool things done
+        speed = temp + step;
+    } else{
+        // Critical zone, let speed the fan up
+        speed = temp + 2*step;
+        speed = speed > 100 ? 100 : speed;
+    }
+
+    return speed;
+  }
 
 static int ec_query_cpu_temp(void) {
     return ec_io_read(EC_REG_CPU_TEMP);
@@ -500,10 +498,6 @@ static int ec_query_fan_rpms(void) {
 }
 
 static int ec_write_fan_duty(int duty_percentage) {
-    if (duty_percentage < 60 || duty_percentage > 100) {
-        printf("Wrong fan duty to write: %d\n", duty_percentage);
-        return EXIT_FAILURE;
-    }
     double v_d = ((double) duty_percentage) / 100.0 * 255.0;
     int v_i = (int) v_d;
     return ec_io_do(0x99, 0x01, v_i);
