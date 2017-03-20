@@ -22,6 +22,12 @@ cd clevo-indicator
 make install
 ```
 
+### Debian
+
+On Debian `ec_sys` is not build by default, you need to built it by yourself.
+*Don't panic* there is a small helper to do it, just run `sudo
+./build_module.sh`. You will probably have to re run this script after very
+kernel update.
 
 Notes
 -----
