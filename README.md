@@ -1,5 +1,5 @@
-Clevo Fan Control Indicator for Ubuntu
-======================================
+Clevo Fan Control Indicator for Debian / Ubuntu / Mint
+======================================================
 
 This program is an Ubuntu indicator to control the fan of Clevo laptops, using reversed-engineering port information from ECView.
 
