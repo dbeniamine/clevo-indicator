@@ -475,6 +475,9 @@ static void ec_on_sigterm(int signum) {
 static int ec_auto_duty_adjust(void) {
     int temp = MAX(share_info->cpu_temp, share_info->gpu_temp);
     int speed;
+    int duty = share_info->fan_duty;
+    static int skip=0;
+    int maxskip = 100;
 
     // Round temperature to TEMP_STEP
     temp = temp - temp % TEMP_STEP;
@@ -497,6 +500,12 @@ static int ec_auto_duty_adjust(void) {
             }
         }
     }
+    // Avoid quick speed changes
+    if(skip < maxskip && speed <= duty + 2*DUTY_STEP){
+        ++skip;
+        return 0;
+    }
+    skip=0;
 
     return speed;
   }
