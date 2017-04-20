@@ -23,8 +23,11 @@ fi
 
 sudo aptitude install linux-source linux-headers-`uname -r`
 cd /usr/src/
-major=`uname -r | cut -d '.' -f 1-2` 
-tar xvJf linux-source-$major.tar.xz
+major=`uname -r | cut -d '.' -f 1-2`
+if [ ! -d linux-source-$major ]
+then
+    tar xvJf linux-source-$major.tar.xz
+fi
 cd linux-source-$major
 make oldconfig
 make scripts
