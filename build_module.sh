@@ -21,9 +21,16 @@ then
     echo "this script should be run as root"
 fi
 
-sudo aptitude install linux-source linux-headers-`uname -r`
+if [ -z "$1" ]
+then
+    KVER=`uname -r`
+else
+    KVER=$1
+fi
+major=`echo $KVER | cut -d '.' -f 1-2`
+
+sudo aptitude install linux-source linux-headers-$KVER
 cd /usr/src/
-major=`uname -r | cut -d '.' -f 1-2`
 if [ ! -d linux-source-$major ]
 then
     tar xvJf linux-source-$major.tar.xz
@@ -32,7 +39,7 @@ cd linux-source-$major
 make oldconfig
 make scripts
 cd drivers/acpi
-make CONFIG_ACPI_EC_DEBUGFS=m -C /usr/src/linux-headers-`uname -r`  M=`pwd` modules
+make CONFIG_ACPI_EC_DEBUGFS=m -C /usr/src/linux-headers-$KVER  M=`pwd` modules
 insmod ec_sys.ko
 res=$?
 if [ $res -ne 0 ]

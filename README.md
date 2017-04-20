@@ -30,8 +30,13 @@ On Debian `ec_sys.ko` is not built by default, you need to build it by yourself.
 
     sudo ./build_module.sh
 
-**Warning:** You will probably have to run this script after every kernel
-update.
+It is required to run this script after each kernel upgrade, to do it
+automatically, just run :
+
+    sudo cp build_module.sh /etc/kernel/postinst.d/
+
+**Warning: ** I have not yet tested the automatic run of the script with
+postinst.d, please report any problem.
 
 Notes
 -----
