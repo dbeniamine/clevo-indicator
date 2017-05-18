@@ -50,6 +50,8 @@ else
     echo "module correctly built"
 fi
 rmmod ec_sys
+ln -sf $PWD/ec_sys.ko /lib/modules/$KVER/
+depmod
 modprobe ec_sys
 if [ -z "`grep ec_sys /etc/modules`" ]
 then
