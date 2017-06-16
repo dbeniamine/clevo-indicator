@@ -2,6 +2,7 @@
  ============================================================================
  Name        : clevo-indicator.c
  Author      : AqD <iiiaqd@gmail.com>
+ Author      : David Beniamine <David@Beniamine.net>
  Version     :
  Description : Ubuntu fan control indicator for Clevo laptops
 
@@ -75,31 +76,34 @@
 
 /* Fine tunning for auto adjust
  *
- * Speed values are always between MIN_DUTY and MAX_DUTY
+ * We define the temperatures threshold in TEMP_TH
+ * and the duty (speed) threshold in DUTY_TH
  *
- * Depending on the CPU temperature we use one of the following modes
+ * The algorithm basically decide the speed this way:
  *
- * On quiet mode CPU TEMP < TEMP_HIGH
- *  temp is rounded to TEMP_STEP down
- *  speed = temp - DUTY_STEP * n
- *      where n is the number of thresshold underpassed temp  (between 1 and 3)
+ * find i such that temp > TEMP_TH[i] && temp <= TEMP_TH[i+1]
+ *   if i > PERF_IDX
+ *      speed = old_speed + DUTY_STEP
+ *   else
+ *      speed = old_speed - DUTY_STEP
+ *   Make sure duty is between DUTY_TH[i] and DUTY_TH[i+1]
  *
- * On performance mode
- *  temp is rounded to TEMP_STEP up
- *  speed = temp + DUTY_STEP * n
- *      where n is the number of threshold overpassed by temp (between 1 and 2)
+ *   To avoid quick speed changes, we do single step speed change only every
+ *   MAX_SKIP calls to auto_adjust
+ *
  */
 
-#define MIN_DUTY 25
-#define MAX_DUTY 100
+#define DUTY_STEP 10
+#define MAX_SKIP 100
 
-#define DUTY_STEP 5
-#define TEMP_STEP 5
-
-#define TEMP_LOW  45
-#define TEMP_MID  55
-#define TEMP_HIGH 65
-#define TEMP_CRIT 75
+// Maximum index of tempTH
+#define NB_TH_IDX 3
+// Threshold for temperature
+int TEMP_TH[NB_TH_IDX] = { 60, 65, 80};
+// DUTY threshold depending on the above temperature thresholds
+int DUTY_TH[NB_TH_IDX + 2] = { 0, 20, 50, 80, 100 };
+// Above this temperature index, we enter performance mode
+#define PERF_IDX 1
 
 typedef enum {
     NA = 0, AUTO = 1, MANUAL = 2
@@ -145,8 +149,11 @@ struct {
     GtkWidget* widget;
 
 }static menuitems[] = {
-        { "Set FAN to AUTO", G_CALLBACK(ui_command_set_fan), 0, AUTO, NULL },
+        { "Set FAN to AUTO", G_CALLBACK(ui_command_set_fan), -1, AUTO, NULL },
         { "", NULL, 0L, NA, NULL },
+        { "Set FAN to  0%", G_CALLBACK(ui_command_set_fan), 0, MANUAL, NULL },
+        { "Set FAN to  10%", G_CALLBACK(ui_command_set_fan), 10, MANUAL, NULL },
+        { "Set FAN to  20%", G_CALLBACK(ui_command_set_fan), 20, MANUAL, NULL },
         { "Set FAN to  30%", G_CALLBACK(ui_command_set_fan), 30, MANUAL, NULL },
         { "Set FAN to  40%", G_CALLBACK(ui_command_set_fan), 40, MANUAL, NULL },
         { "Set FAN to  50%", G_CALLBACK(ui_command_set_fan), 50, MANUAL, NULL },
@@ -329,7 +336,7 @@ static int main_ec_worker(void) {
         // auto EC
         if (share_info->auto_duty == 1) {
             int next_duty = ec_auto_duty_adjust();
-            if (next_duty != 0 && next_duty != share_info->auto_duty_val) {
+            if (next_duty >= 0 && next_duty != share_info->auto_duty_val) {
                 char s_time[256];
                 get_time_string(s_time, 256, "%m/%d %H:%M:%S");
                 printf("%s CPU=%d°C, GPU=%d°C, auto fan duty to %d%%\n", s_time,
@@ -338,7 +345,7 @@ static int main_ec_worker(void) {
                 share_info->auto_duty_val = next_duty;
             }
         }
-        //
+        // sleep 0.2s
         usleep(200 * 1000);
     }
     printf("worker quit\n");
@@ -425,7 +432,7 @@ static gboolean ui_update(gpointer user_data) {
 
 static void ui_command_set_fan(long fan_duty) {
     int fan_duty_val = (int) fan_duty;
-    if (fan_duty_val == 0) {
+    if (fan_duty_val == -1) {
         printf("clicked on fan duty auto\n");
         share_info->auto_duty = 1;
         share_info->auto_duty_val = 0;
@@ -474,41 +481,41 @@ static void ec_on_sigterm(int signum) {
 
 static int ec_auto_duty_adjust(void) {
     int temp = MAX(share_info->cpu_temp, share_info->gpu_temp);
-    int speed;
-    int duty = share_info->fan_duty;
+    int speed, old_speed = share_info->fan_duty;
+    int th_idx = 0;
+    int factor;
     static int skip=0;
-    int maxskip = 100;
+    // Get the temperature position
+    while( th_idx < NB_TH_IDX && temp > TEMP_TH[th_idx] )
+        ++th_idx;
 
-    // Round temperature to TEMP_STEP
-    temp = temp - temp % TEMP_STEP;
-    if(temp >= TEMP_HIGH){
-        // Performance mode, round speed to TEMP_STEP up
-        temp += TEMP_STEP;
-        speed = temp + DUTY_STEP;
-        if(temp > TEMP_CRIT){
-            speed += DUTY_STEP;
-            speed = speed > MAX_DUTY ? MAX_DUTY : speed;
-        }
-    }else{
-        // Quiet mode temp
-        speed = temp - DUTY_STEP;
-        if(temp <= TEMP_MID){
-            speed -= DUTY_STEP;
-            if(temp <= TEMP_LOW){
-                speed -= DUTY_STEP;
-                speed = speed < MIN_DUTY ? MIN_DUTY : speed;
-            }
-        }
+    // Are we above the max TH IDX ?
+    if(th_idx == NB_TH_IDX && temp > TEMP_TH[th_idx -1])
+        ++th_idx;
+
+    // Are we trying to speed fan up or down ?
+    factor = th_idx >= PERF_IDX ? 1 : -1;
+
+    // Set speed
+    speed = old_speed + factor * DUTY_STEP;
+
+    // Make sure speed is inside DUTY TH
+    if (speed < DUTY_TH[th_idx]){
+        speed = DUTY_TH[th_idx];
+    }else if (speed > DUTY_TH[th_idx+1]){
+        speed = DUTY_TH[th_idx+1];
     }
+
     // Avoid quick speed changes
-    if(skip < maxskip && speed <= duty + 2*DUTY_STEP){
+    if(skip < MAX_SKIP && speed >= old_speed - 2*DUTY_STEP &&
+            speed <= old_speed + 2*DUTY_STEP){
         ++skip;
-        return 0;
+        return -1;
     }
-    skip=0;
+    skip = 0;
 
     return speed;
-  }
+}
 
 static int ec_query_cpu_temp(void) {
     return ec_io_read(EC_REG_CPU_TEMP);
