@@ -420,13 +420,13 @@ static int main_test_fan(int duty_percentage) {
 
 static gboolean ui_update(gpointer user_data) {
     char label[256];
-    sprintf(label, "%d℃ %d℃", share_info->cpu_temp, share_info->gpu_temp);
-    app_indicator_set_label(indicator, label, "XXXXXX");
+    int load = share_info->fan_duty;
+    int load_r = (load/5 + (load%5>2?1:0) ) *5;
+    sprintf(label, "%d℃ %d℃ %d%%", share_info->cpu_temp, share_info->gpu_temp, load_r);
+    app_indicator_set_label(indicator, label, "100°C 100°C 100%");
     char icon_name[256];
-    double load = ((double) share_info->fan_rpms) / MAX_FAN_RPM * 100.0;
-    double load_r = round(load / 5.0) * 5.0;
-    sprintf(icon_name, "brasero-disc-%02d", (int) load_r);
-    //app_indicator_set_icon(indicator, icon_name);
+    sprintf(icon_name, "brasero-disc-%02d", load_r);
+    app_indicator_set_icon(indicator, icon_name);
     return G_SOURCE_CONTINUE;
 }
 
