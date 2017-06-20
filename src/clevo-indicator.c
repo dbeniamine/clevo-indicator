@@ -182,22 +182,24 @@ struct {
 
 static pid_t parent_pid = 0;
 
+
+char outfile[] = "/var/run/clevo-indicator";
+
 int main(int argc, char* argv[]) {
     printf("Simple fan control utility for Clevo laptops\n");
     if (check_proc_instances(NAME) > 1) {
-        printf("Multiple running instances!\n");
-        char* display = getenv("DISPLAY");
-        if (display != NULL && strlen(display) > 0) {
-            int desktop_uid = getuid();
-            setuid(desktop_uid);
-            //
-            gtk_init(&argc, &argv);
-            GtkWidget* dialog = gtk_message_dialog_new(NULL, 0,
-                    GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
-                    "Multiple running instances of %s!", NAME);
-            gtk_dialog_run(GTK_DIALOG(dialog));
-            gtk_widget_destroy(dialog);
-        }
+        printf("Clevo indicator is already running\n");
+        printf("Current state :\n");
+        FILE *f = fopen(outfile, "r");
+        char *line = NULL;
+        char c;
+        if(f == NULL)
+            printf("can't open %s for reading status\n", outfile);
+        while((c =fgetc(f)) != EOF)
+            printf("%c", c);
+        fprintf(f, "\n");
+        free(line);
+        fclose(f);
         return EXIT_FAILURE;
     }
     if (ec_init() != EXIT_SUCCESS) {
@@ -289,10 +291,17 @@ static void main_init_share(void) {
     share_info->manual_next_fan_duty = 0;
     share_info->manual_prev_fan_duty = 0;
 }
+static void print_info(int duty){
+    FILE *f = fopen(outfile, "w");
+    fprintf(f, "CPU=%d°C GPU=%d°C FAN=%d%%\n",
+            share_info->cpu_temp, share_info->gpu_temp, duty);
+    fclose(f);
+}
 
 static int main_ec_worker(void) {
     setuid(0);
     system("modprobe ec_sys");
+    print_info(ec_query_fan_duty());
     while (share_info->exit == 0) {
         // check parent
         if (parent_pid != 0 && kill(parent_pid, 0) == -1) {
@@ -301,10 +310,11 @@ static int main_ec_worker(void) {
         }
         // write EC
         int new_fan_duty = share_info->manual_next_fan_duty;
-        if (new_fan_duty != 0
+        if (new_fan_duty >= 0
                 && new_fan_duty != share_info->manual_prev_fan_duty) {
             ec_write_fan_duty(new_fan_duty);
             share_info->manual_prev_fan_duty = new_fan_duty;
+            print_info(new_fan_duty);
         }
         // read EC
         int io_fd = open("/sys/kernel/debug/ec/ec0/io", O_RDONLY, 0);
@@ -343,6 +353,7 @@ static int main_ec_worker(void) {
                         share_info->cpu_temp, share_info->gpu_temp, next_duty);
                 ec_write_fan_duty(next_duty);
                 share_info->auto_duty_val = next_duty;
+                print_info(next_duty);
             }
         }
         // sleep 0.2s
