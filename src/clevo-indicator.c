@@ -200,7 +200,7 @@ int main(int argc, char* argv[]) {
         fprintf(f, "\n");
         free(line);
         fclose(f);
-        return EXIT_FAILURE;
+        return EXIT_SUCCESS;
     }
     if (ec_init() != EXIT_SUCCESS) {
         printf("unable to control EC: %s\n", strerror(errno));
