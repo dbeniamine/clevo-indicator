@@ -284,7 +284,7 @@ static void main_init_share(void) {
     share_info->exit = 0;
     share_info->cpu_temp = 0;
     share_info->gpu_temp = 0;
-    share_info->fan_duty = 0;
+    share_info->fan_duty = -1;
     share_info->fan_rpms = 0;
     share_info->auto_duty = 1;
     share_info->auto_duty_val = 0;
@@ -466,7 +466,7 @@ static void ui_toggle_menuitems(int fan_duty) {
     for (int i = 0; i < menuitem_count; i++) {
         if (menuitems[i].widget == NULL)
             continue;
-        if (fan_duty == 0)
+        if (fan_duty < 0)
             gtk_widget_set_sensitive(menuitems[i].widget,
                     menuitems[i].type != AUTO);
         else
