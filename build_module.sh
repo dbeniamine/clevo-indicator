@@ -29,7 +29,7 @@ else
 fi
 major=`echo $KVER | cut -d '.' -f 1-2`
 
-sudo aptitude install linux-source linux-headers-$KVER
+sudo apt-get install linux-source linux-headers-$KVER
 cd /usr/src/
 if [ ! -d linux-source-$major ]
 then
