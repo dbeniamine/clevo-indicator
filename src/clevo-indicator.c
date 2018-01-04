@@ -300,7 +300,7 @@ static void print_info(int duty){
 
 static int main_ec_worker(void) {
     setuid(0);
-    system("modprobe ec_sys");
+    system("/sbin/modprobe ec_sys");
     print_info(ec_query_fan_duty());
     while (share_info->exit == 0) {
         // check parent
