@@ -509,17 +509,14 @@ static int ec_auto_duty_adjust(void) {
     // Make sure speed is inside DUTY TH
     if (speed < DUTY_TH[th_idx]){
         speed = DUTY_TH[th_idx];
-        printf("Speed too low, forced to%s\n", speed);
     }else if (speed > DUTY_TH[th_idx+1]){
         speed = DUTY_TH[th_idx+1];
-        printf("Speed too high, forced to%s\n", speed);
     }else if(skip < MAX_SKIP && speed ){
         // Avoid quick speed changes
         ++skip;
         return -1;
     }
     skip = 0;
-    printf("Speed set to%s\n", speed);
 
     return speed;
 }
