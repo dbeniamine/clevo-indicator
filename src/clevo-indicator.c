@@ -97,13 +97,13 @@
 #define MAX_SKIP 50
 
 // Maximum index of tempTH
-#define NB_TH_IDX 4
+#define NB_TH_IDX 3
 // Threshold for temperature
-int TEMP_TH[NB_TH_IDX] = { 65, 70, 80, 85};
+int TEMP_TH[NB_TH_IDX] = { 65, 75, 85};
 // DUTY threshold depending on the above temperature thresholds
-int DUTY_TH[NB_TH_IDX + 2] = { 0, 30, 50, 80, 100 };
+int DUTY_TH[NB_TH_IDX + 2] = { 0, 30, 80, 100 };
 // Above this temperature index, we enter performance mode
-#define PERF_IDX 2
+#define PERF_IDX 1
 
 typedef enum {
     NA = 0, AUTO = 1, MANUAL = 2
