@@ -94,16 +94,16 @@
  */
 
 #define DUTY_STEP 10
-#define MAX_SKIP 100
+#define MAX_SKIP 50
 
 // Maximum index of tempTH
-#define NB_TH_IDX 3
+#define NB_TH_IDX 4
 // Threshold for temperature
-int TEMP_TH[NB_TH_IDX] = { 60, 65, 80};
+int TEMP_TH[NB_TH_IDX] = { 65, 70, 80, 85};
 // DUTY threshold depending on the above temperature thresholds
-int DUTY_TH[NB_TH_IDX + 2] = { 0, 20, 50, 80, 100 };
+int DUTY_TH[NB_TH_IDX + 2] = { 0, 30, 50, 80, 100 };
 // Above this temperature index, we enter performance mode
-#define PERF_IDX 1
+#define PERF_IDX 2
 
 typedef enum {
     NA = 0, AUTO = 1, MANUAL = 2
@@ -391,7 +391,7 @@ static void main_ui_worker(int argc, char** argv) {
     g_assert(IS_APP_INDICATOR(indicator));
     app_indicator_set_label(indicator, "Init..", "XX");
     app_indicator_set_status(indicator, APP_INDICATOR_STATUS_ACTIVE);
-    app_indicator_set_ordering_index(indicator, -2);
+    app_indicator_set_ordering_index(indicator, 0);
     app_indicator_set_title(indicator, "Clevo");
     app_indicator_set_menu(indicator, GTK_MENU(indicator_menu));
     g_timeout_add(500, &ui_update, NULL);
@@ -500,10 +500,6 @@ static int ec_auto_duty_adjust(void) {
     while( th_idx < NB_TH_IDX && temp > TEMP_TH[th_idx] )
         ++th_idx;
 
-    // Are we above the max TH IDX ?
-    if(th_idx == NB_TH_IDX && temp > TEMP_TH[th_idx -1])
-        ++th_idx;
-
     // Are we trying to speed fan up or down ?
     factor = th_idx >= PERF_IDX ? 1 : -1;
 
@@ -513,17 +509,17 @@ static int ec_auto_duty_adjust(void) {
     // Make sure speed is inside DUTY TH
     if (speed < DUTY_TH[th_idx]){
         speed = DUTY_TH[th_idx];
+        printf("Speed too low, forced to%s\n", speed);
     }else if (speed > DUTY_TH[th_idx+1]){
         speed = DUTY_TH[th_idx+1];
-    }
-
-    // Avoid quick speed changes
-    if(skip < MAX_SKIP && speed >= old_speed - 2*DUTY_STEP &&
-            speed <= old_speed + 2*DUTY_STEP){
+        printf("Speed too high, forced to%s\n", speed);
+    }else if(skip < MAX_SKIP && speed ){
+        // Avoid quick speed changes
         ++skip;
         return -1;
     }
     skip = 0;
+    printf("Speed set to%s\n", speed);
 
     return speed;
 }
