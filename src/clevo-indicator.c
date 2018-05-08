@@ -97,11 +97,11 @@
 #define MAX_SKIP 50
 
 // Maximum index of tempTH
-#define NB_TH_IDX 3
+#define NB_TH_IDX 4
 // Threshold for temperature
-int TEMP_TH[NB_TH_IDX] = { 65, 75, 85};
+int TEMP_TH[NB_TH_IDX] = { 65, 75, 80, 85};
 // DUTY threshold depending on the above temperature thresholds
-int DUTY_TH[NB_TH_IDX + 2] = { 0, 30, 80, 100 };
+int DUTY_TH[NB_TH_IDX + 1] = { 0, 30, 60, 80, 100 };
 // Above this temperature index, we enter performance mode
 #define PERF_IDX 1
 
@@ -500,6 +500,7 @@ static int ec_auto_duty_adjust(void) {
     while( th_idx < NB_TH_IDX && temp > TEMP_TH[th_idx] )
         ++th_idx;
 
+
     // Are we trying to speed fan up or down ?
     factor = th_idx >= PERF_IDX ? 1 : -1;
 
@@ -508,6 +509,8 @@ static int ec_auto_duty_adjust(void) {
 
     // Make sure speed is inside DUTY TH
     if (speed < DUTY_TH[th_idx]){
+        speed = DUTY_TH[th_idx];
+    }else if (th_idx == NB_TH_IDX){
         speed = DUTY_TH[th_idx];
     }else if (speed > DUTY_TH[th_idx+1]){
         speed = DUTY_TH[th_idx+1];
